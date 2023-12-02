@@ -1,0 +1,23 @@
+original
+best 21 KI 23 QE 2741 [2834] : QN SZ
+real    1m17.071s
+user    1m15.688s
+sys     0m1.380s
+
+vector<string> remaining
+best 23 QE 21 KI 2741 [2834] : QN SZ
+real    1m7.124s
+user    1m6.316s
+sys     0m0.791s
+
+heap optimized, linear lookups from string_view to Valve
+best 23 QE 21 KI 2741 [2834] : SZ QN
+real    0m31.648s
+user    0m30.874s
+sys     0m0.711s
+
+heap optimizied, index optimized
+best 23 0 21 47 2741 [2834] : SZ QN
+real    0m6.319s
+user    0m6.268s
+sys     0m0.050s

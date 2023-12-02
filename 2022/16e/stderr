@@ -1,0 +1,8 @@
+source.cpp: In function ‘void Day16()’:
+source.cpp:189:9: warning: unused variable ‘total’ [-Wunused-variable]
+  189 |     int total = 0;
+      |         ^~~~~
+source.cpp: In function ‘void Day16b()’:
+source.cpp:312:9: warning: unused variable ‘total’ [-Wunused-variable]
+  312 |     int total = 0;
+      |         ^~~~~

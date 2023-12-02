@@ -1,0 +1,220 @@
+Starting
+QE 3 : OU ME UX AX TW 3
+TN 16 : UW CG WB 16
+UX 0 : AA QE 0
+HK 5 : HT QU TW WV OK 5
+SK 14 : GH GA XM 14
+HY 0 : LG AA 0
+BK 0 : SZ AA 0
+BY 11 : SP HS DN KD TK 11
+GR 0 : FE OK 0
+OH 0 : BM KE 0
+DC 0 : AX XH 0
+YS 0 : XH EU 0
+KP 0 : KI OF 0
+LG 0 : FE HY 0
+FE 4 : RU GR YI LG ME 4
+NK 0 : SD BM 0
+EU 0 : NS YS 0
+OF 0 : CJ KP 0
+TW 0 : HK QE 0
+GL 0 : AF CQ 0
+OU 0 : KN QE 0
+BM 24 : GH NK YH OH 24
+GA 0 : SK SZ 0
+EI 17 : ZX AF 17
+QN 25 : SD 25
+ZX 0 : EI WB 0
+ME 0 : QE FE 0
+CJ 21 : OF YI KD 21
+AX 0 : DC QE 0
+LW 0 : AA HT 0
+CQ 18 : GL XM 18
+KN 0 : SZ OU 0
+HS 0 : UZ BY 0
+RU 0 : TK FE 0
+SZ 6 : WV GA BK KE KN 6
+AF 0 : GL EI 0
+YI 0 : FE CJ 0
+HT 0 : LW HK 0
+WV 0 : SZ HK 0
+TK 0 : BY RU 0
+GH 0 : BM SK 0
+CG 0 : TN SP 0
+AA 0 : HY UX VQ LW BK 0
+SP 0 : BY CG 0
+XM 0 : SK CQ 0
+DN 0 : NS BY 0
+XH 22 : YS QU UZ DC 22
+KI 20 : UW KP 20
+OK 0 : HK GR 0
+YH 0 : VQ BM 0
+UZ 0 : XH HS 0
+KE 0 : OH SZ 0
+VQ 0 : AA YH 0
+QU 0 : HK XH 0
+WB 0 : TN ZX 0
+UW 0 : KI TN 0
+SD 0 : NK QN 0
+NS 23 : EU DN 23
+KD 0 : BY CJ 0
+path QE TN 8
+path QE HK 2
+path QE SK 5
+path QE BY 5
+path QE FE 2
+path QE BM 5
+path QE EI 10
+path QE QN 8
+path QE CJ 4
+path QE CQ 7
+path QE SZ 3
+path QE XH 3
+path QE KI 7
+path QE NS 6
+path QE AA 2
+path TN HK 8
+path TN SK 8
+path TN BY 3
+path TN FE 6
+path TN BM 10
+path TN EI 3
+path TN QN 13
+path TN CJ 5
+path TN CQ 6
+path TN SZ 10
+path TN XH 6
+path TN KI 2
+path TN NS 5
+path TN AA 9
+path HK SK 4
+path HK BY 5
+path HK FE 3
+path HK BM 5
+path HK EI 9
+path HK QN 8
+path HK CJ 5
+path HK CQ 6
+path HK SZ 2
+path HK XH 2
+path HK KI 8
+path HK NS 5
+path HK AA 3
+path SK BY 9
+path SK FE 7
+path SK BM 2
+path SK EI 5
+path SK QN 5
+path SK CJ 9
+path SK CQ 2
+path SK SZ 2
+path SK XH 6
+path SK KI 10
+path SK NS 9
+path SK AA 4
+path BY FE 3
+path BY BM 9
+path BY EI 6
+path BY QN 12
+path BY CJ 2
+path BY CQ 9
+path BY SZ 7
+path BY XH 3
+path BY KI 5
+path BY NS 2
+path BY AA 6
+path FE BM 6
+path FE EI 9
+path FE QN 9
+path FE CJ 2
+path FE CQ 9
+path FE SZ 5
+path FE XH 5
+path FE KI 5
+path FE NS 5
+path FE AA 3
+path BM EI 7
+path BM QN 3
+path BM CJ 8
+path BM CQ 4
+path BM SZ 3
+path BM XH 7
+path BM KI 11
+path BM NS 10
+path BM AA 3
+path EI QN 10
+path EI CJ 8
+path EI CQ 3
+path EI SZ 7
+path EI XH 9
+path EI KI 5
+path EI NS 8
+path EI AA 9
+path QN CJ 11
+path QN CQ 7
+path QN SZ 6
+path QN XH 10
+path QN KI 14
+path QN NS 13
+path QN AA 6
+path CJ CQ 11
+path CJ SZ 7
+path CJ XH 5
+path CJ KI 3
+path CJ NS 4
+path CJ AA 5
+path CQ SZ 4
+path CQ XH 8
+path CQ KI 8
+path CQ NS 11
+path CQ AA 6
+path SZ XH 4
+path SZ KI 10
+path SZ NS 7
+path SZ AA 2
+path XH KI 8
+path XH NS 3
+path XH AA 5
+path KI NS 7
+path KI AA 8
+path NS AA 8
+14 =size 69 14 [ 5267 ] WINNER
+15 =size 138 14 [ 5267 ] WINNER
+16 =size 207 13 [ 5267 ] WINNER
+27 =size 528 14 [ 5038 ] WINNER
+27 =size 597 13 [ 5243 ] WINNER
+172 =size 666 13 [ 5243 ] WINNER
+241 =size 822 13 [ 4833 ] WINNER
+341 =size 946 12 [ 4646 ] WINNER
+410 =size 968 13 [ 4628 ] WINNER
+820 =size 1032 11 [ 4452 ] WINNER
+877 =size 1234 12 [ 4445 ] WINNER
+1073 =size 1322 11 [ 4438 ] WINNER
+4320 =size 1396 11 [ 4276 ] WINNER
+4435 =size 1418 12 [ 4262 ] WINNER
+4595 =size 1506 11 [ 4260 ] WINNER
+4605 =size 1596 11 [ 4260 ] WINNER
+8668 =size 1702 10 [ 4116 ] WINNER
+14943 =size 1786 11 [ 3946 ] WINNER
+15393 =size 1890 10 [ 3938 ] WINNER
+27556 =size 1955 9 [ 3800 ] WINNER
+53456 =size 2011 9 [ 3663 ] WINNER
+87425 =size 2033 9 [ 3554 ] WINNER
+99294 =size 2044 8 [ 3526 ] WINNER
+112310 =size 2070 9 [ 3500 ] WINNER
+123447 =size 2081 8 [ 3472 ] WINNER
+133668 =size 2102 8 [ 3454 ] WINNER
+142694 =size 2237 8 [ 3437 ] WINNER
+146454 =size 2291 7 [ 3431 ] WINNER
+251785 =size 2325 8 [ 3315 ] WINNER
+340401 =size 2447 7 [ 3237 ] WINNER
+480788 =size 2480 6 [ 3146 ] WINNER
+575787 =size 2502 6 [ 3096 ] WINNER
+612883 =size 2575 6 [ 3079 ] WINNER
+627071 =size 2608 5 [ 3072 ] WINNER
+1024180 =size 2632 4 [ 2956 ] WINNER
+1038959 =size 2695 5 [ 2953 ] WINNER
+1332832 =size 2732 3 [ 2902 ] WINNER
+1905872 =size 2741 2 [ 2834 ] WINNER
+best 23 0 21 47 2741 [2834] : QN SZ
+Day 16

@@ -1,0 +1,4 @@
+source.cpp: In function ‘void Day22b(std::deque<std::basic_string_view<char> >&)’:
+source.cpp:248:13: warning: unused variable ‘olddir’ [-Wunused-variable]
+  248 |         int olddir = at_ind;
+      |             ^~~~~~
