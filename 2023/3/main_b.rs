@@ -20,10 +20,25 @@ struct NumberData {
 }
 
 impl NumberData {
+    const CHAR_ZERO_DIGIT : i32 = '0' as i32;
     const NOT_STARTED : i32 = -1;
 
-    fn processing_number(&self) -> bool {
+    fn has_number(&self) -> bool {
         return self.number != NumberData::NOT_STARTED;
+    }
+
+    fn add_digit(&mut self, digit : char, index : i32) {
+        if self.number == NumberData::NOT_STARTED {
+            self.number = 0;
+            self.start = index - 1;
+        }
+
+        self.number = (self.number * 10) + (digit as i32 - NumberData::CHAR_ZERO_DIGIT);
+        self.end = index + 1;
+    }
+
+    fn reset(&mut self) {
+        *self = NumberData { ..Default::default() };
     }
 }
 
@@ -56,7 +71,6 @@ impl Default for LineData {
     }
 }
 
-const CHAR_ZERO_DIGIT : i32 = '0' as i32;
 
 fn main() {
 
@@ -77,32 +91,20 @@ fn main() {
 
         // Process all input lines
         for line in lines {
-            if let Ok(mut contents) = line {
+            if let Ok(contents) = line {
                 let mut current_line : LineData = LineData { ..Default::default() };
 
                 // Add a trailing dot so I don't have to special case numbers at the end of the line
-                contents.push('.');
                 for (i, c) in contents.chars().enumerate() {
 
                     // Search the string for numeric characters and manually convert them to be able to easily track string lengths
                     if c.is_ascii_digit() {
-                        // starting a number
-                        if !current_number.processing_number() {
-                            current_number.number = 0;
-                            current_number.start = (i as i32) - 1;
-                        }
-
-                        // combine the digits into the number
-                        current_number.number = (current_number.number * 10) + (c as i32 - CHAR_ZERO_DIGIT);
-
+                        current_number.add_digit(c, i as i32);
                     } else {
-                        // got the the end of a number
-                        if current_number.processing_number() {
-                            current_number.end = i as i32;
+                        // Push and reset the current number if we have one
+                        if current_number.has_number() {
                             current_line.numbers.push(current_number);
-
-                            // reset the current number so it can process a new number
-                            current_number = NumberData { ..Default::default() };
+                            current_number.reset();
                         }
 
                         // Handle gears
@@ -111,6 +113,14 @@ fn main() {
                         }
                     }
                 }
+
+                // Handle numbers at the end of the line
+                if current_number.has_number() {
+                    current_line.numbers.push(current_number);
+                    current_number.reset();
+                }
+
+
 
                 // store the processed input line
                 all_lines.push(current_line);
