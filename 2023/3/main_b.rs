@@ -71,30 +71,27 @@ impl Default for LineData {
     }
 }
 
-
 fn main() {
 
+    // Vector for processed lines of input
+    let mut all_lines : Vec<LineData> = Vec::new();
+
+    // file_path must exist in the current path
     let args: Vec<String> = env::args().collect();
     let file_path = &args[1];
-
-    // File hosts.txt must exist in the current path
     if let Ok(lines) = read_lines(file_path) {
 
-        // Vector for processed lines of input
-        let mut all_lines : Vec<LineData> = Vec::new();
-
         // Prime the data with a blank line to make things easy
-        let empty_line : LineData = LineData { ..Default::default() };
-        all_lines.push(empty_line);
-
-        let mut current_number : NumberData = NumberData { ..Default::default() };
+        let first_line : LineData = LineData { ..Default::default() };
+        all_lines.push(first_line);
 
         // Process all input lines
         for line in lines {
             if let Ok(contents) = line {
-                let mut current_line : LineData = LineData { ..Default::default() };
 
-                // Add a trailing dot so I don't have to special case numbers at the end of the line
+                // Process each line looking for numbers and symbols
+                let mut current_line : LineData = LineData { ..Default::default() };
+                let mut current_number : NumberData = NumberData { ..Default::default() };
                 for (i, c) in contents.chars().enumerate() {
 
                     // Search the string for numeric characters and manually convert them to be able to easily track string lengths
@@ -107,7 +104,7 @@ fn main() {
                             current_number.reset();
                         }
 
-                        // Handle gears
+                        // Handle symbols, for part B the only symbols we care about are gears
                         if c == '*' {
                             current_line.symbols.push(i as i32);
                         }
@@ -117,10 +114,7 @@ fn main() {
                 // Handle numbers at the end of the line
                 if current_number.has_number() {
                     current_line.numbers.push(current_number);
-                    current_number.reset();
                 }
-
-
 
                 // store the processed input line
                 all_lines.push(current_line);
@@ -128,42 +122,40 @@ fn main() {
         }
 
         // Push a blank line at the end to give us a window of 3 lines for each input line
-        let empty_line : LineData = LineData {..Default::default()};
-        all_lines.push(empty_line);
+        let final_line : LineData = LineData { ..Default::default() };
+        all_lines.push(final_line);
+    }
 
-        // Get some member
-        let mut number_of_gears : i32;
-        let mut gear_numbers : [i32; 2] = [0, 0];
+    // Search the processed input looking for gears
+    let mut sum : i64 = 0;
+    for line_num in 1 .. all_lines.len()-1 {
+        let local = &all_lines[line_num-1 .. line_num+2];
 
-        // Process all the input lines looking for gears
-        let mut sum : i64 = 0;
-        for line_num in 1 .. all_lines.len()-1 {
-            let local = &all_lines[line_num-1 .. line_num+2];
+        // for each gear '*' in the input symbols
+        for sym in &local[1].symbols {
 
-            // for each gear '*' in the input data
-            for sym in &local[1].symbols {
-
-                // count the number of numbers adjacent to this gear
-                number_of_gears = 0;
-                for window_line in local {
-                    for nd in &window_line.numbers {
-                        if *sym >= nd.start && *sym <= nd.end {
-                            if number_of_gears < 2 {
-                                gear_numbers[number_of_gears as usize] = nd.number;
-                            }
-                            number_of_gears += 1;
+            // count the number of numbers adjacent to this gear
+            let mut number_of_gears : i32 = 0;
+            let mut gear_numbers : [i32; 2] = [0, 0];
+            for window_line in local {
+                for nd in &window_line.numbers {
+                    // Check for the gear being adjacent to the number
+                    if *sym >= nd.start && *sym <= nd.end {
+                        if number_of_gears < 2 {
+                            gear_numbers[number_of_gears as usize] = nd.number;
                         }
+                        number_of_gears += 1;
                     }
                 }
+            }
 
-                // If it's two, then it's a gear.  Combine it into the sum.
-                if number_of_gears == 2 {
-                    sum += (gear_numbers[0] * gear_numbers[1]) as i64;
-                }
+            // If it's two, then it's a gear.  Combine it into the sum.
+            if number_of_gears == 2 {
+                sum += (gear_numbers[0] * gear_numbers[1]) as i64;
             }
         }
-
-        // Report the answer and we are done!
-        println!("answer {}", sum);
     }
+
+    // Report the answer and we are done!
+    println!("answer {}", sum);
 }
