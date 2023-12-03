@@ -19,6 +19,18 @@ struct NumberData {
     end: i32
 }
 
+// Provide defaults
+const NOT_STARTED : i32 = -1;
+impl Default for NumberData {
+    fn default() -> NumberData {
+        NumberData {
+            number: NOT_STARTED,
+            start: 0,
+            end: 0
+        }
+    }
+}
+
 // Represents a usable line of input from the data
 // Lists all the numbers and symbols/gears that were found on the line
 #[derive(Clone)]
@@ -37,8 +49,7 @@ impl Default for LineData {
     }
 }
 
-const ZERO : i32 = '0' as i32;
-const NOT_STARTED : i32 = -2;
+const CHAR_ZERO_DIGIT : i32 = '0' as i32;
 
 fn main() {
 
@@ -55,7 +66,7 @@ fn main() {
         let empty_line : LineData = LineData { ..Default::default() };
         all_lines.push(empty_line);
 
-        let mut current_number : NumberData = NumberData { number: 0, start: NOT_STARTED, end: 0};
+        let mut current_number : NumberData = NumberData { ..Default::default() };
 
         // Process all input lines
         for line in lines {
@@ -69,25 +80,22 @@ fn main() {
                     // Search the string for numeric characters and manually convert them to be able to easily track string lengths
                     if c.is_ascii_digit() {
                         // starting a number
-                        if current_number.start == NOT_STARTED {
+                        if current_number.number == NOT_STARTED {
                             current_number.number = 0;
                             current_number.start = (i as i32) - 1;
-                            current_number.end = 0;
                         }
 
                         // combine the digits into the number
-                        current_number.number = (current_number.number * 10) + (c as i32 - ZERO);
+                        current_number.number = (current_number.number * 10) + (c as i32 - CHAR_ZERO_DIGIT);
 
                     } else {
                         // got the the end of a number
-                        if current_number.start != NOT_STARTED {
+                        if current_number.number != NOT_STARTED {
                             current_number.end = i as i32;
                             current_line.numbers.push(current_number);
 
                             // reset the current number so it can process a new number
-                            current_number.number = 0;
-                            current_number.start = NOT_STARTED;
-                            current_number.end = 0;
+                            current_number = NumberData { ..Default::default() };
                         }
 
                         // Handle gears
