@@ -11,6 +11,26 @@ where P: AsRef<Path>, {
     Ok(io::BufReader::new(file).lines())
 }
 
+struct NumberData {
+    number: i32,
+    start: i32,
+    end: i32
+}
+
+struct LineData {
+    numbers: Vec<NumberData>,
+    symbols: Vec<i32>
+}
+
+impl Default for LineData {
+    fn default() -> LineData {
+        LineData {
+            numbers: Vec::new(),
+            symbols: Vec::new(),
+        }
+    }
+}
+
 fn main() {
 
     let args: Vec<String> = env::args().collect();
@@ -20,20 +40,10 @@ fn main() {
     // File hosts.txt must exist in the current path
     if let Ok(lines) = read_lines(file_path) {
 
-        struct NumberData {
-            number: i32,
-            start: i32,
-            end: i32
-        }
-
-        struct LineData {
-            numbers: Vec<NumberData>,
-            symbols: Vec<i32>
-        }
 
         let mut all_lines : Vec<LineData> = Vec::new();
 
-        let empty_line : LineData = LineData { numbers: Vec::new(), symbols: Vec::new()};
+        let empty_line : LineData = LineData { ..Default::default() };
         all_lines.push(empty_line);
 
 
@@ -43,7 +53,7 @@ fn main() {
                 let mut number_start : i32 = 0;
                 let mut processing_number = false;
 
-                let mut current_line : LineData = LineData { numbers: Vec::new(), symbols: Vec::new()};
+                let mut current_line : LineData = LineData { ..Default::default() };
 
                 contents.push('.');
                 for (i, c) in contents.chars().enumerate() {
@@ -75,7 +85,7 @@ fn main() {
             }
         }
 
-        let empty_line : LineData = LineData { numbers: Vec::new(), symbols: Vec::new()};
+        let empty_line : LineData = LineData {..Default::default()};
         all_lines.push(empty_line);
 
         let mut sum : i64 = 0;
