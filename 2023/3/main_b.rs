@@ -11,17 +11,23 @@ where P: AsRef<Path>, {
     Ok(io::BufReader::new(file).lines())
 }
 
+// Represents a number in the input, including its span of characters (-1 and +1 too to handle adjacency)
+#[derive(Copy, Clone)]
 struct NumberData {
     number: i32,
     start: i32,
     end: i32
 }
 
+// Represents a usable line of input from the data
+// Lists all the numbers and symbols/gears that were found on the line
+#[derive(Clone)]
 struct LineData {
     numbers: Vec<NumberData>,
     symbols: Vec<i32>
 }
 
+// Provide defaults
 impl Default for LineData {
     fn default() -> LineData {
         LineData {
@@ -31,85 +37,108 @@ impl Default for LineData {
     }
 }
 
+const ZERO : i32 = '0' as i32;
+const NOT_STARTED : i32 = -2;
+
 fn main() {
 
     let args: Vec<String> = env::args().collect();
     let file_path = &args[1];
-    let zero = '0' as i32;
 
     // File hosts.txt must exist in the current path
     if let Ok(lines) = read_lines(file_path) {
 
-
+        // Vector for processed lines of input
         let mut all_lines : Vec<LineData> = Vec::new();
 
+        // Prime the data with a blank line to make things easy
         let empty_line : LineData = LineData { ..Default::default() };
         all_lines.push(empty_line);
 
+        let mut current_number : NumberData = NumberData { number: 0, start: NOT_STARTED, end: 0};
 
+        // Process all input lines
         for line in lines {
             if let Ok(mut contents) = line {
-                let mut number : i32 = 0;
-                let mut number_start : i32 = 0;
-                let mut processing_number = false;
-
                 let mut current_line : LineData = LineData { ..Default::default() };
 
+                // Add a trailing dot so I don't have to special case numbers at the end of the line
                 contents.push('.');
                 for (i, c) in contents.chars().enumerate() {
+
+                    // Search the string for numeric characters and manually convert them to be able to easily track string lengths
                     if c.is_ascii_digit() {
-                        if !processing_number {
-                            processing_number = true;
-                            number_start = (i as i32) - 1;
-                            number = 0;
+                        // starting a number
+                        if current_number.start == NOT_STARTED {
+                            current_number.number = 0;
+                            current_number.start = (i as i32) - 1;
+                            current_number.end = 0;
                         }
-                        number = (number * 10) + (c as i32 - zero);
+
+                        // combine the digits into the number
+                        current_number.number = (current_number.number * 10) + (c as i32 - ZERO);
+
                     } else {
-                        if processing_number {
-                            let number_data = NumberData {
-                                number,
-                                start: number_start,
-                                end: (i as i32)
-                            };
-                            current_line.numbers.push(number_data);
-                            number_start = -1;
-                            number = 0;
-                            processing_number = false;
+                        // got the the end of a number
+                        if current_number.start != NOT_STARTED {
+                            current_number.end = i as i32;
+                            current_line.numbers.push(current_number);
+
+                            // reset the current number so it can process a new number
+                            current_number.number = 0;
+                            current_number.start = NOT_STARTED;
+                            current_number.end = 0;
                         }
+
+                        // Handle gears
                         if c == '*' {
                             current_line.symbols.push(i as i32);
                         }
                     }
                 }
+
+                // store the processed input line
                 all_lines.push(current_line);
             }
         }
 
+        // Push a blank line at the end to give us a window of 3 lines for each input line
         let empty_line : LineData = LineData {..Default::default()};
         all_lines.push(empty_line);
 
-        let mut sum : i64 = 0;
+        // Get some member
+        let mut number_of_gears : i32;
+        let mut gear_numbers : [i32; 2] = [0, 0];
 
-        let mut gear_numbers : Vec<i32> = Vec::new();
-        
+        // Process all the input lines looking for gears
+        let mut sum : i64 = 0;
         for line_num in 1 .. all_lines.len()-1 {
             let local = &all_lines[line_num-1 .. line_num+2];
+
+            // for each gear '*' in the input data
             for sym in &local[1].symbols {
 
-                gear_numbers.clear();
+                // count the number of numbers adjacent to this gear
+                number_of_gears = 0;
                 for window_line in local {
                     for nd in &window_line.numbers {
                         if *sym >= nd.start && *sym <= nd.end {
-                            gear_numbers.push(nd.number);
+                            if number_of_gears < 2 {
+                                gear_numbers[number_of_gears as usize] = nd.number;
+                            }
+                            number_of_gears += 1;
                         }
                     }
                 }
 
-                if gear_numbers.len() == 2 {
+                // If it's two, then it's a gear.  Combine it into the sum.
+                if number_of_gears == 2 {
                     sum += (gear_numbers[0] * gear_numbers[1]) as i64;
                 }
             }
         }
-        println!("final sum {}", sum);
+
+        // Report the answer and we are done!
+        println!("answer {}", sum);
     }
 }
