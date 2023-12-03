@@ -19,12 +19,19 @@ struct NumberData {
     end: i32
 }
 
-// Provide defaults
-const NOT_STARTED : i32 = -1;
+impl NumberData {
+    const NOT_STARTED : i32 = -1;
+
+    fn processing_number(&self) -> bool {
+        return self.number != NumberData::NOT_STARTED;
+    }
+}
+
+// Provide defaults for NumberData
 impl Default for NumberData {
     fn default() -> NumberData {
         NumberData {
-            number: NOT_STARTED,
+            number: NumberData::NOT_STARTED,
             start: 0,
             end: 0
         }
@@ -80,7 +87,7 @@ fn main() {
                     // Search the string for numeric characters and manually convert them to be able to easily track string lengths
                     if c.is_ascii_digit() {
                         // starting a number
-                        if current_number.number == NOT_STARTED {
+                        if !current_number.processing_number() {
                             current_number.number = 0;
                             current_number.start = (i as i32) - 1;
                         }
@@ -90,7 +97,7 @@ fn main() {
 
                     } else {
                         // got the the end of a number
-                        if current_number.number != NOT_STARTED {
+                        if current_number.processing_number() {
                             current_number.end = i as i32;
                             current_line.numbers.push(current_number);
 
