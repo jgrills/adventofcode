@@ -1,0 +1,56 @@
+rustc main_a.rs
+warning: unused variable: `sz`
+  --> main_a.rs:15:9
+   |
+15 |     let sz = slice.len();
+   |         ^^ help: if this is intentional, prefix it with an underscore: `_sz`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `width`
+  --> main_a.rs:35:9
+   |
+35 |     let mut width = 0;
+   |         ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_width`
+
+error[E0384]: cannot assign twice to immutable variable `again`
+  --> main_a.rs:21:26
+   |
+18 |     let again = false;
+   |         -----
+   |         |
+   |         first assignment to `again`
+   |         help: make this binding mutable: `mut again`
+...
+21 |         if arr[i] != 0 { again = true; }
+   |                          ^^^^^^^^^^^^ cannot assign twice to immutable variable
+
+warning: variable does not need to be mutable
+  --> main_a.rs:35:9
+   |
+35 |     let mut width = 0;
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` on by default
+
+error[E0382]: use of moved value: `parts`
+   --> main_a.rs:48:46
+    |
+41  |                 let parts = contents.split(" ");
+    |                     ----- move occurs because `parts` has type `std::str::Split<'_, &str>`, which does not implement the `Copy` trait
+42  |                 
+43  |                 for (x, c) in parts.enumerate() {
+    |                                     ----------- `parts` moved due to this method call
+...
+48  |                 let next = find_next(&arr[0..parts.count()]);
+    |                                              ^^^^^ value used here after move
+    |
+note: this function consumes the receiver `self` by taking ownership of it, which moves `parts`
+
+error: aborting due to 2 previous errors; 3 warnings emitted
+
+Some errors have detailed explanations: E0382, E0384.
+For more information about an error, try `rustc --explain E0382`.
+make: *** [Makefile:4: main_a] Error 1
