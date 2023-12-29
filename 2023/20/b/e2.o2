@@ -1,0 +1,73 @@
+send broadcaster -low-> a
+send a -high-> inv
+send a -high-> con
+send inv -low-> b
+send con -low-> output
+send b -high-> con
+process 5=node low output O X
+send con -low-> output
+process 5=node low output O X
+partial 3 low 5 result 15
+send broadcaster -low-> a
+send a -low-> inv
+send a -low-> con
+send inv -high-> b
+send con -high-> output
+process 3=node high b % X
+process 5=node high output O X
+partial 5 low 9 result 45
+send broadcaster -low-> a
+send a -high-> inv
+send a -high-> con
+send inv -low-> b
+send con -low-> output
+send b -low-> con
+process 5=node low output O X
+send con -high-> output
+process 5=node high output O X
+partial 8 low 14 result 112
+send broadcaster -low-> a
+send a -low-> inv
+send a -low-> con
+send inv -high-> b
+send con -high-> output
+process 3=node high b % X
+process 5=node high output O X
+partial 10 low 18 result 180
+send broadcaster -low-> a
+send a -high-> inv
+send a -high-> con
+send inv -low-> b
+send con -low-> output
+send b -high-> con
+process 5=node low output O X
+send con -low-> output
+process 5=node low output O X
+partial 3 low 5 result 15
+send broadcaster -low-> a
+send a -low-> inv
+send a -low-> con
+send inv -high-> b
+send con -high-> output
+process 3=node high b % X
+process 5=node high output O X
+partial 5 low 9 result 45
+send broadcaster -low-> a
+send a -high-> inv
+send a -high-> con
+send inv -low-> b
+send con -low-> output
+send b -low-> con
+process 5=node low output O X
+send con -high-> output
+process 5=node high output O X
+partial 8 low 14 result 112
+send broadcaster -low-> a
+send a -low-> inv
+send a -low-> con
+send inv -high-> b
+send con -high-> output
+process 3=node high b % X
+process 5=node high output O X
+partial 10 low 18 result 180
+final high 20 low 36 result 720

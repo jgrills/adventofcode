@@ -1,0 +1,15 @@
+start: 0
+broadcaster S : a : 1
+a % : inv, con : 2 4
+inv ! : b : 3
+b % : con : 4
+con & : output : 5
+output O :  :
+button -low -> broadcaster
+send S broadcaster -low-> a
+send % a -high-> inv
+send % a -high-> con
+send ! inv -low-> b
+send & con -high-> output
+send % b -high-> con
+process 5=node high output O X

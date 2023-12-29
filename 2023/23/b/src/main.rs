@@ -5,21 +5,23 @@ use std::path::Path;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 
-type YXC = (i16, i16, char);
-const STEPS : [YXC; 4] = [(-1, 0, '^'), (1, 0, 'v'), (0, -1, '<'), (0, 1, '>')];
-
-#[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord)]
 struct YX {
     y : i16,
     x : i16
 }
 
-const WALK : usize = 4000;
+#[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord)]
+struct WYX {
+    y : u8,
+    x : u8
+}
+
+const WALK : usize = ((142 * 142) * 2) / 3;
 
 #[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord)]
 struct Walk {
     steps: usize,
-    step: [YX; WALK]
+    step: [WYX; WALK]
 }
 
 const DIM : usize = 150;
@@ -29,16 +31,19 @@ fn a_star(map: &Map, width: i16, height: i16, start: YX, goal: YX) -> Walk {
 
     let mut heap = BinaryHeap::new();
 
-    let mut result : Walk = Walk{step: [YX{y:0,x:0}; WALK], steps:0 };
+    let mut result : Walk = Walk{step: [WYX{y:0,x:0}; WALK], steps:0 };
 
     // start of the search
-    heap.push(Reverse(Walk{step: [start; WALK], steps:1 }));
+    let sx : WYX = WYX{y:start.y as u8, x:start.x as u8};
+    heap.push(Reverse(Walk{step: [sx; WALK], steps:1 }));
 
     // Expand the search frontier
     while let Some(Reverse(mut walk)) = heap.pop() {
 
-        let position = walk.step[walk.steps-1];
-        let under = map[position.y as usize][position.x as usize];
+        let wp = walk.step[walk.steps-1];
+        let position : YX = YX{ y:wp.y as i16, x: wp.x as i16};
+
+        // let under = map[position.y as usize][position.x as usize];
         // println!("exploring {}=len {}=steps at {},{}", heap.len(), walk.steps, position.y, position.x);
 
         if position == goal {
@@ -50,7 +55,7 @@ fn a_star(map: &Map, width: i16, height: i16, start: YX, goal: YX) -> Walk {
         // Examine each step out of this cell
         'steploop: for (_dir, step) in STEPS.iter().enumerate() {
 
-            if under == '.' || under == step.2 {
+            if true {
                 let p : YX = YX{ y: position.y + step.0, x: position.x + step.1};
 
                 // make sure the destination is a valid cell and the cell is traversable
@@ -58,10 +63,11 @@ fn a_star(map: &Map, width: i16, height: i16, start: YX, goal: YX) -> Walk {
 
                     // make sure we don't retrace a previous step
                     for k in (0..walk.steps).rev() {
-                        if p == walk.step[k] { continue 'steploop; }
+                        let wsk = walk.step[k];
+                        if p.x == wsk.x as i16 && p.y == wsk.y as i16 { continue 'steploop; }
                     }
 
-                    walk.step[walk.steps] = p;
+                    walk.step[walk.steps] = WYX{y:p.y as u8, x:p.x as u8};
                     heap.push(Reverse(Walk{ step: walk.step, steps: walk.steps+1}));
                 }
             }
