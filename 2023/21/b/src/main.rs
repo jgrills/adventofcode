@@ -1,5 +1,9 @@
 use std::env;
 use std::fs;
+use std::collections::HashSet;
+
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+struct YX { y:i64, x:i64}
 
 fn split_with_char(input: &str, with: char) -> (&str, &str) {
     match input.find(with) {
@@ -23,19 +27,19 @@ fn main() {
     };
 
     // get str for the rest of the file contents left to process
-    let mut start : (usize, usize) = (DIM,DIM)
+    let mut start =  YX{y:0,x:0};
     let mut rest : &str = file_contents.as_str();
     while !rest.is_empty() {
         let line : &str;
         (line, rest) = split_with_char(rest, '\n');
         for (x, c) in line.chars().enumerate() {
-            map[height as usize][x] = match c {
-                '.' => 0b0010,
+            map[height][x] = match c {
+                '.' => 2,
                 'S' => {
-                    start = (y, x);
-                    0b0010
+                    start = YX{ y:height as i64, x:x as i64};
+                    2
                 },
-                '#' => 0b0001,
+                '#' => 1,
                 _ => panic!("unknown map element")
             }
         }
@@ -43,61 +47,57 @@ fn main() {
         height += 1;
     }
 
-    let print_map = | m: &Map, w : usize, h : usize | {
-        for y in 0..h {
-            for x in 0..w  {
-                let v = m[y][x];
+    let _print_map = | dests : &HashSet<YX> | {
+        for y in 0..height {
+            let y64 = y as i64;
+            for x in 0..width  {
+                let x64 = x as i64;
+                let v = map[y][x];
                 let out = match v {
-                    1 => '#',
-                    2 => '.',
-                    6 => 'O',
+                    1 => if dests.contains(&YX{y:y64,x:x64}) { panic!(); } else { '#' },
+                    2 => if dests.contains(&YX{y:y64,x:x64}) { 'O' } else { '.' },
                     _ => panic!("unexpected value {}", v)
                 };
                 print!("{}", out);
             }
-            println!("");
+            println!();
         }
-        println!("");
     };
 
+    let mut active = HashSet::new();
+    let mut new = HashSet::new();
+    let mut frontier = HashSet::new();
+    let w64 = width as i64;
+    let h64 = height as i64;
+    frontier.insert(start.clone());
+    let num_steps : i32 = 26501365;
+    for steps in 0..num_steps {
+        let mut new_frontier = HashSet::new();
+        for yx in &frontier {
+            let y = yx.y;
+            let x = yx.x;
 
-    print_map(&map, width, height);
-
-    let from = 0b0110;
-    let to =   0b1000;
-    for steps in 0..64 {
-        for y in 0..height {
-            for x in 0..width {
-                let cell = map[y][x];
-                let current = cell == from;
-                if current {
-                    if y > 0 { map[y-1][x] |= to; }
-                    if x > 0 { map[y][x-1] |= to; }
-                    if y < height-1 { map[y+1][x] |= to; }
-                    if x < width-1  { map[y][x+1] |= to; }
+            let mut step = | y : i64, x : i64 | {
+                let my = ((if y < 0 { y + ((-y / h64) + 1) * h64 } else { y }) % h64) as usize;
+                let mx = ((if x < 0 { x + ((-x / w64) + 1) * w64 } else { x }) % w64) as usize;
+                if map[my][mx] == 2 {
+                    if new.insert(YX{y,x}) {
+                        new_frontier.insert(YX{y,x});
+                    }; 
                 }
-            }
+            };
+
+            step(y-1, x  );
+            step(y  , x-1);
+            step(y+1, x  );
+            step(y  , x+1);
         }
 
-
-        let mut spots = 0;
-        for y in 0..height {
-            for x in 0..width {
-                let cell = map[y][x];
-                let result = match cell {
-                    0b0001 | 0b1001 => 0b0001,
-                    0b1010 | 0b1110 => {
-                        spots += 1;
-                        0b0110
-                    },
-                    0b0010 | 0b0110 => 0b0010,
-                    _ => panic!("unexpected cell {}", cell)
-                };
-                map[y][x] = result;
-            }
-        }
-
-        println!("\nturn {} spots {}", steps, spots);
-        // print_map(&map, width, height);
+        let finished = (((steps+1)*100) as f64) / num_steps as f64; 
+        if (steps+1) % 100 == 0 { println!("{:.3} turn {} spots {} added {}", finished, steps+1, new.len(), new_frontier.len()); }
+        //print_map(&active);
+        std::mem::swap(&mut active, &mut new);
+        std::mem::swap(&mut frontier, &mut new_frontier);
     }
+    println!("spots {}", active.len());
 }
