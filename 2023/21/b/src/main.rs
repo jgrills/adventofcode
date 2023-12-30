@@ -1,9 +1,11 @@
 use std::env;
 use std::fs;
+use std::str;
 use std::collections::HashSet;
-
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
-struct YX { y:i64, x:i64}
+use std::collections::BTreeMap;
+use std::string::String;
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
+struct YX { y:i32, x:i32 }
 
 fn split_with_char(input: &str, with: char) -> (&str, &str) {
     match input.find(with) {
@@ -12,10 +14,45 @@ fn split_with_char(input: &str, with: char) -> (&str, &str) {
     }
 }
 
+fn blockid(y : i32, x : i32, h32 : i32, w32 : i32 ) -> YX {
+    YX{
+        y: if y < 0 { -(-y + (h32 - 1)) / h32 } else { y / h32 },
+        x: if x < 0 { -(-x + (w32 - 1)) / w32 } else { x / w32 }
+    }
+}
+
+fn mapyx(y : i32, x : i32, h32 : i32, w32 : i32 ) -> (usize, usize) {
+        (
+            ((if y < 0 { y + ((-y / h32) + 1) * h32 } else { y }) % h32) as usize,
+            ((if x < 0 { x + ((-x / w32) + 1) * w32 } else { x }) % w32) as usize
+        )
+}
+
+fn commaify( mut n : usize, output : &mut[u8] ) -> &str {
+    let mut three = 0;
+    let mut start = output.len();
+    while n != 0 {
+        if three == 3 { 
+            three = 0;
+            if start == 0 { panic!("buffer too small"); }
+            start -= 1;
+            output[start] = b','; 
+        }
+        three += 1;
+        let digit = (n % 10) as u8;
+        n = n / 10;
+        if start == 0 { panic!("buffer too small"); }
+        start -= 1;
+        output[start] = b'0' + digit; 
+    }
+    str::from_utf8(&output[start..]).unwrap()
+}
+
+
 fn main() {
     const DIM : usize = 140;
-    let mut width : usize = 0;
     let mut height : usize = 0;
+    let mut width : usize = 0;
     type Map = [[u8; DIM]; DIM];
     let mut map : Map = [[0; DIM]; DIM];
 
@@ -36,7 +73,7 @@ fn main() {
             map[height][x] = match c {
                 '.' => 2,
                 'S' => {
-                    start = YX{ y:height as i64, x:x as i64};
+                    start = YX{ y:height as i32, x:x as i32};
                     2
                 },
                 '#' => 1,
@@ -49,13 +86,13 @@ fn main() {
 
     let _print_map = | dests : &HashSet<YX> | {
         for y in 0..height {
-            let y64 = y as i64;
+            let y32 = y as i32;
             for x in 0..width  {
-                let x64 = x as i64;
+                let x32 = x as i32;
                 let v = map[y][x];
                 let out = match v {
-                    1 => if dests.contains(&YX{y:y64,x:x64}) { panic!(); } else { '#' },
-                    2 => if dests.contains(&YX{y:y64,x:x64}) { 'O' } else { '.' },
+                    1 => if dests.contains(&YX{y:y32,x:x32}) { panic!(); } else { '#' },
+                    2 => if dests.contains(&YX{y:y32,x:x32}) { 'O' } else { '.' },
                     _ => panic!("unexpected value {}", v)
                 };
                 print!("{}", out);
@@ -64,40 +101,92 @@ fn main() {
         }
     };
 
-    let mut active = HashSet::new();
-    let mut new = HashSet::new();
-    let mut frontier = HashSet::new();
-    let w64 = width as i64;
-    let h64 = height as i64;
-    frontier.insert(start.clone());
+    let mut blocks = BTreeMap::<YX, Map>::new();
+    let mut frontier = Vec::<YX>::new();
+    let mut frontier_new = Vec::<YX>::new();
+    let mut removals = Vec::<YX>::new();
+    let mut spots: usize = 0;
+    let mut spots_new : usize = 0;
+    let w32 = width as i32;
+    let h32 = height as i32;
+    frontier.reserve(10000000);
+    frontier_new.reserve(10000000);
+    removals.reserve(100000);
+    frontier.push(start.clone());
+    map[DIM-1][DIM-1] = 1;
+    blocks.insert(YX{y:0,x:0}, map.clone());
+
+    let step = | y : i32, x : i32, blocks : &mut BTreeMap<YX, Map>, frontier : &mut Vec<YX>, spots : &mut usize | {
+        let byx = blockid(y, x, h32, w32);
+        let bl = match blocks.get_mut(&byx) {
+            Some(x) => x, 
+            None => {
+                // println!("adding block {} {}", byx.y, byx.x);
+                blocks.insert(byx.clone(), map.clone());
+                match blocks.get_mut(&byx) {
+                    Some(x) => x, 
+                    None => panic!()
+                }
+            }
+        };
+
+        bl[DIM-1][DIM-1] = 1;
+
+        let (my , mx) = mapyx(y, x, h32, w32);
+        if bl[my][mx] == 2 {
+            bl[my][mx] = 4;
+            *spots += 1;
+            frontier.push(YX{y,x});
+        }
+    };
+
+    let mut remove_count: usize = 0;
     let num_steps : i32 = 26501365;
     for steps in 0..num_steps {
-        let mut new_frontier = HashSet::new();
         for yx in &frontier {
             let y = yx.y;
             let x = yx.x;
-
-            let mut step = | y : i64, x : i64 | {
-                let my = ((if y < 0 { y + ((-y / h64) + 1) * h64 } else { y }) % h64) as usize;
-                let mx = ((if x < 0 { x + ((-x / w64) + 1) * w64 } else { x }) % w64) as usize;
-                if map[my][mx] == 2 {
-                    if new.insert(YX{y,x}) {
-                        new_frontier.insert(YX{y,x});
-                    }; 
-                }
+            let byx = blockid(y, x, h32, w32);
+            let bl : &mut Map = match blocks.get_mut(&byx) {
+                Some(x) => x, 
+                None =>  panic!("{} {} {} {} -> {} {}", y,x,h32,w32,byx.y,byx.x)
             };
-
-            step(y-1, x  );
-            step(y  , x-1);
-            step(y+1, x  );
-            step(y  , x+1);
+            bl[DIM-1][DIM-1] = 1;
+            
+            step(y-1, x  , &mut blocks, &mut frontier_new, &mut spots_new);
+            step(y  , x-1, &mut blocks, &mut frontier_new, &mut spots_new);
+            step(y+1, x  , &mut blocks, &mut frontier_new, &mut spots_new);
+            step(y  , x+1, &mut blocks, &mut frontier_new, &mut spots_new);
         }
 
-        let finished = (((steps+1)*100) as f64) / num_steps as f64; 
-        if (steps+1) % 100 == 0 { println!("{:.3} turn {} spots {} added {}", finished, steps+1, new.len(), new_frontier.len()); }
+        for (k, ab) in blocks.iter_mut() {
+            if ab[DIM-1][DIM-1] == 0 {
+                removals.push(*k);
+            } else {
+                ab[DIM-1][DIM-1] = 0; 
+            }
+        }
+        for &bxy in &removals {
+            blocks.remove(&bxy);
+        };
+        remove_count += removals.len();
+        removals.clear();
+
+        if (steps+1) % 100 == 0 {
+
+            let finished = (((steps+1)*100) as f32) / num_steps as f32; 
+            let mut spots_buffer : [u8; 16] = [0;16];
+            let mut blocks_buffer : [u8; 16] = [0;16];
+            println!("{:.3}% {}=turn {}=spots {}=blocks {}=frontier {}=removals", finished, steps+1, commaify(spots_new, &mut spots_buffer), commaify(blocks.len(), &mut blocks_buffer), frontier_new.len(), remove_count);
+            remove_count = 0;
+        }
+
         //print_map(&active);
-        std::mem::swap(&mut active, &mut new);
-        std::mem::swap(&mut frontier, &mut new_frontier);
+        std::mem::swap(&mut frontier, &mut frontier_new);
+        std::mem::swap(&mut spots, &mut spots_new);
+        frontier_new.clear();
     }
-    println!("spots {}", active.len());
+    let mut spots_buffer : [u8; 16] = [0;16];
+    let mut blocks_buffer : [u8; 16] = [0;16];
+    println!("{}=spots {}=blocks {}=frontier", commaify(spots, &mut spots_buffer), commaify(blocks.len(), &mut blocks_buffer), frontier.len());
 }
