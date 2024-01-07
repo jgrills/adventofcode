@@ -2,7 +2,7 @@
 export LESS=R
 
 c() { clear; }
-b() { cargo build; }
+b() { cargo --color always build; }
 re() { target/debug/app example;  }
 re1() { target/debug/app example1;  }
 re2() { target/debug/app example2; }
