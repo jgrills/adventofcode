@@ -83,7 +83,7 @@ struct BlockMutableData {
     adds : Updates
 }
 impl Default for BlockMutableData {
-    fn default() -> Self { Self { map: [[0; DIM];DIM], filled:[0,0], adds: Updates::new() } }
+    fn default() -> Self { Self { map: [[0; DIM];DIM], filled:[0,0], adds: Updates::new()} }
 }
 impl BlockMutableData  {
     fn new() -> Self { Default::default() }
@@ -93,21 +93,24 @@ struct BlockLocalData {
     inputs : [Arc<Mutex<Updates>>; DIRS],
     outputs : [Arc<Mutex<Updates>>; DIRS]
 }
+impl BlockLocalData  {
+}
 impl Default for BlockLocalData {
     fn default() -> Self {
-        let inputs = [
+        let empty_updates = Arc::new(Mutex::new(Updates::new()));
+        let outputs = [
             Arc::new(Mutex::new(Updates::new())),
             Arc::new(Mutex::new(Updates::new())),
             Arc::new(Mutex::new(Updates::new())),
             Arc::new(Mutex::new(Updates::new())),
             Arc::new(Mutex::new(Updates::new())),
         ];
-        let outputs = [
-            inputs[0].clone(),
-            inputs[1].clone(),
-            inputs[2].clone(),
-            inputs[3].clone(),
-            inputs[4].clone(),
+        let inputs = [
+            Arc::clone(&empty_updates),
+            Arc::clone(&empty_updates),
+            Arc::clone(&empty_updates),
+            Arc::clone(&empty_updates),
+            Arc::clone(&outputs[4])
         ];
         Self { inputs, outputs }
     }
@@ -148,7 +151,7 @@ impl Block {
         // read all the input threads while we are mutable
         let bd : &mut BlockData = &mut self.data.write().unwrap();
         let inputs = &bd.local.inputs;
-        let ins : [&Updates; 5]= [
+        let ins : [&Updates; 5] = [
             &inputs[0].lock().unwrap(),
             &inputs[1].lock().unwrap(),
             &inputs[2].lock().unwrap(),
@@ -156,8 +159,8 @@ impl Block {
             &inputs[4].lock().unwrap()
         ];
         let mut adds : Updates = Updates::new();
-        for inn in ins.iter()  {
-            for yx in inn.slice() {
+        for input_updates in ins.iter() {
+            for yx in input_updates.slice() {
                 let (y,x) = yx.usize_tuple();
                 if bd.mutable.map[y][x] == 0 {
                     adds.push(*yx);
@@ -169,11 +172,16 @@ impl Block {
 
         mem::swap(&mut adds, &mut bd.mutable.adds);
         println!("    outgoing {}=active {}=filled", bd.mutable.adds.yxs, bd.mutable.filled[step & 1usize]);
+        bd.mutable.adds.yxs
+    }
+    fn num_reachable(&self, step : usize) -> usize {
+        let bd : &BlockData = &self.data.write().unwrap();
         bd.mutable.filled[step & 1usize]
     }
 
-    fn explore_neighbors(&self, step:usize, h:i32, w:i32, map : &Map) {
+    fn explore_neighbors(&self, step:usize, byx: YX, h:i32, w:i32, map : &Map) -> Updates {
 
+        let mut expand : Updates = Updates::new();
         let bd : & BlockData = &self.data.read().unwrap();
         println!("    incoming {}=active {}=filled", bd.mutable.adds.yxs, bd.mutable.filled[step & 1usize]);
         let outputs = &bd.local.outputs;
@@ -189,7 +197,6 @@ impl Block {
         for o in outs.iter_mut() {
             o.clear();
         }
-
         let mut local_map : Map = [[0; DIM]; DIM];
         for ad in bd.mutable.adds.slice() {
             //println!("  {},{}=ad ", ad.y,ad.x);
@@ -199,15 +206,19 @@ impl Block {
                 if n.y < 0 {
                     n.y += h;
                     out = outs[0];
+                    expand.push(byx.add(*s));
                 } else if n.y >= h {
                     n.y -= h;
                     out = outs[1];
+                    expand.push(byx.add(*s));
                 } else if n.x < 0 {
                     n.x += w;
                     out = outs[2];
+                    expand.push(byx.add(*s));
                 } else if n.x >= w {
                     n.x -= w;
                     out = outs[3];
+                    expand.push(byx.add(*s));
                 } else {
                     out = outs[4];
                 }
@@ -222,6 +233,7 @@ impl Block {
                 }
             }
         }
+        expand
     }
 }
 
@@ -267,28 +279,134 @@ fn main() {
     blocks.insert(YX::new(), initial);
     active.insert(YX::new());
 
-    let num_steps : usize = 64;
+    let num_steps : usize = 26501365;
     for step in 0..num_steps {
         println!("{}=step", step);
+        let mut expand : Updates = Updates::new();
         for byx in active.iter() {
             println!("  {},{}=byx", byx.y, byx.x);
             match blocks.get(byx) {
                 Some(block) => {
-                    block.explore_neighbors(step, h32, w32, &map);
+                    let block_expand : Updates = block.explore_neighbors(step, *byx, h32, w32, &map);
+                    for e in block_expand.slice() {
+                        expand.push(*e);
+                    }
                 },
                 None => panic!()
             };
         }
 
+        for byx in expand.slice() {
+            println!("  {},{}=expand", byx.y, byx.x);
+            match blocks.get(byx) {
+                Some(_) => {
+                    println!("    already present");
+                    true
+                },
+                None => {
+                    println!("    creating");
+                    let nb = Block::new();
+                    {
+                        let nbd : &mut BlockData = &mut nb.data.write().unwrap();
+                        let inputs = &mut nbd.local.inputs;
+                        match blocks.get(&byx.add(STEP[0])) {
+                            Some(other) => {
+                                let other_bd : &BlockData = &other.data.write().unwrap();
+                                inputs[0] = Arc::clone(&other_bd.local.outputs[1]);
+                                true
+                            },
+                            None => false
+                        };
+                        match blocks.get(&byx.add(STEP[1])) {
+                            Some(other) => {
+                                let other_bd : &mut BlockData = &mut other.data.write().unwrap();
+                                inputs[1] = Arc::clone(&other_bd.local.outputs[0]);
+                                true
+                            },
+                            None => false
+                        };
+                        match blocks.get(&byx.add(STEP[2])) {
+                            Some(other) => {
+                                let other_bd : &mut BlockData = &mut other.data.write().unwrap();
+                                inputs[2] = Arc::clone(&other_bd.local.outputs[3]);
+                                true
+                            },
+                            None => false
+                        };
+                        match blocks.get(&byx.add(STEP[3])) {
+                            Some(other) => {
+                                let other_bd : &mut BlockData = &mut other.data.write().unwrap();
+                                inputs[3] = Arc::clone(&other_bd.local.outputs[2]);
+                                true
+                            },
+                            None => false
+                        };
+                    }
+                    {
+                        let nbd : &BlockData = &nb.data.read().unwrap();
+                        let outputs = &nbd.local.outputs;
+                        match blocks.get(&byx.add(STEP[0])) {
+                            Some(other) => {
+                                let other_bd : &mut BlockData = &mut other.data.write().unwrap();
+                                other_bd.local.inputs[1] = Arc::clone(&outputs[0]);
+                                true
+                            },
+                            None => false
+                        };
+                        match blocks.get(&byx.add(STEP[1])) {
+                            Some(other) => {
+                                let other_bd : &mut BlockData = &mut other.data.write().unwrap();
+                                other_bd.local.inputs[0] = Arc::clone(&outputs[1]);
+                                true
+                            },
+                            None => false
+                        };
+                        match blocks.get(&byx.add(STEP[2])) {
+                            Some(other) => {
+                                let other_bd : &mut BlockData = &mut other.data.write().unwrap();
+                                other_bd.local.inputs[3] = Arc::clone(&outputs[2]);
+                                true
+                            },
+                            None => false
+                        };
+                        match blocks.get(&byx.add(STEP[3])) {
+                            Some(other) => {
+                                let other_bd : &mut BlockData = &mut other.data.write().unwrap();
+                                other_bd.local.inputs[2] = Arc::clone(&outputs[3]);
+                                true
+                            },
+                            None => false
+                        };
+                        }
+                    blocks.insert(*byx, nb);
+                    active.insert(*byx);
+                    false
+                }
+            };
+        }
+
         let mut filled : usize = 0;
+        let mut removes : Updates = Updates::new();
         for byx in active.iter() {
             filled += match blocks.get(byx) {
                 Some(block) => {
-                    block.gather_adds(step)
+                    let active = block.gather_adds(step);
+                    let filled = block.num_reachable(step);
+                    if filled != 0 && active == 0 {
+                        removes.push(*byx);
+                    }
+                    filled
                 },
                 None => panic!()
             };
         }
+
+        for r in removes.slice() {
+            println!("  {},{}=inactive block", r.y, r.x);
+            active.remove(r);
+        }
+        removes.clear();
+
         println!("  {}=filled", filled);
     }
 }
