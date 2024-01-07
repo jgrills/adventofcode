@@ -2,32 +2,18 @@ use std::env;
 use std::fs;
 use std::mem;
 use std::str;
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 use std::collections::BTreeMap;
 use std::string::String;
 use std::sync::{Arc, RwLock, Mutex};
-use std::thread;
-use std::sync::mpsc::{channel,Sender};
+//use std::thread;
+//use std::sync::mpsc::{channel,Sender};
 
 fn split_with_char(input: &str, with: char) -> (&str, &str) {
     match input.find(with) {
         Some(index) => (&input[0..index], &input[index+1..]),
         None => (input, "")
     }
-}
-
-fn blockid(y : i32, x : i32, h32 : i32, w32 : i32 ) -> YX {
-    YX{
-        y: if y < 0 { -(-y + (h32 - 1)) / h32 } else { y / h32 },
-        x: if x < 0 { -(-x + (w32 - 1)) / w32 } else { x / w32 }
-    }
-}
-
-fn mapyx(y : i32, x : i32, h32 : i32, w32 : i32 ) -> (usize, usize) {
-        (
-            ((if y < 0 { y + ((-y / h32) + 1) * h32 } else { y }) % h32) as usize,
-            ((if x < 0 { x + ((-x / w32) + 1) * w32 } else { x }) % w32) as usize
-        )
 }
 
 fn commaify( mut n : usize, output : &mut[u8] ) -> &str {
@@ -64,9 +50,7 @@ impl Default for YX {
 const DIM : usize = 140;
 type Map = [[u8; DIM]; DIM];
 
-const THREADS : usize = 16;
-
-const UPDATES : usize = 128;
+const UPDATES : usize = 512;
 struct Updates {
     yx : [YX; UPDATES],
     yxs : usize
@@ -85,41 +69,24 @@ impl Updates {
         let yxs = self.yxs;
         &self.yx[..yxs]
     }
-    fn slice_mut<'a>(&'a mut self) -> &'a mut[YX] {
-        let yxs = self.yxs;
-        &mut self.yx[..yxs]
-    }
 }
 
-const DIRS : usize = 5;
-const DIRECTIONS : [YX; DIRS] = [YX{y:-1,x:0}, YX{y:1,x:0}, YX{y:0,x:-1}, YX{y:0,x:1},YX{y:0,x:0}];
-const STEPS : usize= 4;
+const STEPS : usize = 4;
 const STEP : [YX; STEPS] = [YX{y:-1,x:0}, YX{y:1,x:0}, YX{y:0,x:-1}, YX{y:0,x:1}];
+
+// includes 0,0
+const DIRS : usize = 5;
+
 struct BlockMutableData {
     map : Map,
-    filled : usize,
-    adds : Updates,
-    relink : bool
+    filled : [usize; 2],
+    adds : Updates
 }
 impl Default for BlockMutableData {
-    fn default() -> Self { Self { map: [[0; DIM];DIM], filled:0, adds: Updates::new(), relink: true } }
+    fn default() -> Self { Self { map: [[0; DIM];DIM], filled:[0,0], adds: Updates::new() } }
 }
 impl BlockMutableData  {
     fn new() -> Self { Default::default() }
-    fn adds_clear(&mut self) {
-        self.adds.clear();
-    }
-    fn adds_push(&mut self, s : YX) {
-        let (y,x) = s.usize_tuple();
-        if self.map[y][x] == 0 {
-            self.map[y][x] = 1;
-            self.adds.push(s);
-            self.filled += 1;
-        }
-    }
-    fn get_adds_slice<'a>(&'a self) -> &'a[YX] {
-        self.adds.slice()
-    }
 }
 
 struct BlockLocalData {
@@ -128,23 +95,21 @@ struct BlockLocalData {
 }
 impl Default for BlockLocalData {
     fn default() -> Self {
-        let local = Arc::new(Mutex::new(Updates::new()));
-        Self {
-            inputs: [
-                Arc::new(Mutex::new(Updates::new())),
-                Arc::new(Mutex::new(Updates::new())),
-                Arc::new(Mutex::new(Updates::new())),
-                Arc::new(Mutex::new(Updates::new())),
-                local.clone(),
-            ],
-            outputs: [
-                local.clone(),
-                local.clone(),
-                local.clone(),
-                local.clone(),
-                local,
-            ]
-        }
+        let inputs = [
+            Arc::new(Mutex::new(Updates::new())),
+            Arc::new(Mutex::new(Updates::new())),
+            Arc::new(Mutex::new(Updates::new())),
+            Arc::new(Mutex::new(Updates::new())),
+            Arc::new(Mutex::new(Updates::new())),
+        ];
+        let outputs = [
+            inputs[0].clone(),
+            inputs[1].clone(),
+            inputs[2].clone(),
+            inputs[3].clone(),
+            inputs[4].clone(),
+        ];
+        Self { inputs, outputs }
     }
 }
 impl BlockLocalData  {
@@ -173,11 +138,13 @@ impl Block {
         Default::default()
     }
     fn add_start(&mut self, start: YX) {
-        let bd = self.data.write().unwrap();
-        let inputs : &mut Updates = &mut bd.local.inputs[DIRS-1].lock().unwrap();
-        inputs.push(start);
+        let bd : &mut BlockData = &mut self.data.write().unwrap();
+        let (y,x) = start.usize_tuple();
+        bd.mutable.adds.push(start);
+        bd.mutable.map[y][x] = 1;
+        bd.mutable.filled[1] = 1;
     }
-    fn gather_adds(&mut self) {
+    fn gather_adds(&self, step : usize) -> usize {
         // read all the input threads while we are mutable
         let bd : &mut BlockData = &mut self.data.write().unwrap();
         let inputs = &bd.local.inputs;
@@ -191,17 +158,26 @@ impl Block {
         let mut adds : Updates = Updates::new();
         for inn in ins.iter()  {
             for yx in inn.slice() {
-                adds.push(*yx);
+                let (y,x) = yx.usize_tuple();
+                if bd.mutable.map[y][x] == 0 {
+                    adds.push(*yx);
+                    bd.mutable.map[y][x] = 1;
+                    bd.mutable.filled[step & 1usize] += 1;
+                }
             }
         }
 
         mem::swap(&mut adds, &mut bd.mutable.adds);
+        println!("    outgoing {}=active {}=filled", bd.mutable.adds.yxs, bd.mutable.filled[step & 1usize]);
+        bd.mutable.filled[step & 1usize]
     }
 
-    fn explore_neighbors(&self, h:i32, w:i32, map : &Map) {
-        let bd = self.data.read().unwrap();
+    fn explore_neighbors(&self, step:usize, h:i32, w:i32, map : &Map) {
+
+        let bd : & BlockData = &self.data.read().unwrap();
+        println!("    incoming {}=active {}=filled", bd.mutable.adds.yxs, bd.mutable.filled[step & 1usize]);
         let outputs = &bd.local.outputs;
-        let mut outs : [&mut Updates; 5]= [
+        let mut outs : [&mut Updates; 5] = [
             &mut outputs[0].lock().unwrap(),
             &mut outputs[1].lock().unwrap(),
             &mut outputs[2].lock().unwrap(),
@@ -214,7 +190,9 @@ impl Block {
             o.clear();
         }
 
+        let mut local_map : Map = [[0; DIM]; DIM];
         for ad in bd.mutable.adds.slice() {
+            //println!("  {},{}=ad ", ad.y,ad.x);
             for s in STEP.iter() {
                 let out : &mut Updates;
                 let mut n = ad.add(*s);
@@ -234,9 +212,13 @@ impl Block {
                     out = outs[4];
                 }
                 let (ny, nx) = n.usize_tuple();
-                if map[ny][nx] == 2 {
-
+                //println!("  {},{}=ny,nx ", ny,nx);
+                if map[ny][nx] == 2 && bd.mutable.map[ny][nx] == 0 && local_map[ny][nx] == 0 {
+                    //println!("  pushing");
+                    local_map[ny][nx] = 1;
                     out.push(n);
+                } else {
+                    //println!("  skipping");
                 }
             }
         }
@@ -276,51 +258,38 @@ fn main() {
         height += 1;
     }
 
-    let _print_map = | dests : &HashSet<YX> | {
-        for y in 0..height {
-            let y32 = y as i32;
-            for x in 0..width  {
-                let x32 = x as i32;
-                let v = map[y][x];
-                let out = match v {
-                    1 => if dests.contains(&YX{y:y32,x:x32}) { panic!(); } else { '#' },
-                    2 => if dests.contains(&YX{y:y32,x:x32}) { 'O' } else { '.' },
-                    _ => panic!("unexpected value {}", v)
-                };
-                print!("{}", out);
-            }
-            println!();
-        }
-    };
-
     let mut blocks = BTreeMap::<YX, Block>::new();
-    let mut active = BTreeMap::<YX, Block>::new();
+    let mut active = BTreeSet::<YX>::new();
     let w32 = width as i32;
     let h32 = height as i32;
     let mut initial = Block::new();
     initial.add_start(start);
     blocks.insert(YX::new(), initial);
-    let mut initial = Block::new();
-    initial.add_start(start);
-    active.insert(YX::new(), initial);
-    let mut txv : Vec<Sender<usize>> = Vec::new();
-    txv.reserve(THREADS);
+    active.insert(YX::new());
 
-    let mut active_blocks = Vec::new();
-    active_blocks.push(YX::new());
-
-    for i in 0..THREADS {
-        let (tx, rx) = channel::<usize>();
-        txv.push(tx);
-        thread::spawn(move|| {
-            rx.recv().unwrap();
-        });
-    }
-
-    let num_steps : i32 = 26501365;
-    for _steps in 0..num_steps {
-        for (_k,_v) in blocks.iter().enumerate() {
-
+    let num_steps : usize = 64;
+    for step in 0..num_steps {
+        println!("{}=step", step);
+        for byx in active.iter() {
+            println!("  {},{}=byx", byx.y, byx.x);
+            match blocks.get(byx) {
+                Some(block) => {
+                    block.explore_neighbors(step, h32, w32, &map);
+                },
+                None => panic!()
+            };
         }
+
+        let mut filled : usize = 0;
+        for byx in active.iter() {
+            filled += match blocks.get(byx) {
+                Some(block) => {
+                    block.gather_adds(step)
+                },
+                None => panic!()
+            };
+        }
+        println!("  {}=filled", filled);
     }
 }
+
