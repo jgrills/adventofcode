@@ -90,6 +90,7 @@ impl BlockMutableData  {
 }
 
 struct BlockLocalData {
+    empty : [Arc<Mutex<Updates>>; 4],
     inputs : [Arc<Mutex<Updates>>; DIRS],
     outputs : [Arc<Mutex<Updates>>; DIRS]
 }
@@ -97,7 +98,12 @@ impl BlockLocalData  {
 }
 impl Default for BlockLocalData {
     fn default() -> Self {
-        let empty_updates = Arc::new(Mutex::new(Updates::new()));
+        let empty = [
+            Arc::new(Mutex::new(Updates::new())),
+            Arc::new(Mutex::new(Updates::new())),
+            Arc::new(Mutex::new(Updates::new())),
+            Arc::new(Mutex::new(Updates::new()))
+        ];
         let outputs = [
             Arc::new(Mutex::new(Updates::new())),
             Arc::new(Mutex::new(Updates::new())),
@@ -106,13 +112,13 @@ impl Default for BlockLocalData {
             Arc::new(Mutex::new(Updates::new())),
         ];
         let inputs = [
-            Arc::clone(&empty_updates),
-            Arc::clone(&empty_updates),
-            Arc::clone(&empty_updates),
-            Arc::clone(&empty_updates),
+            Arc::clone(&empty[0]),
+            Arc::clone(&empty[1]),
+            Arc::clone(&empty[2]),
+            Arc::clone(&empty[3]),
             Arc::clone(&outputs[4])
         ];
-        Self { inputs, outputs }
+        Self { empty, inputs, outputs }
     }
 }
 impl BlockLocalData  {
@@ -148,6 +154,7 @@ impl Block {
         bd.mutable.filled[1] = 1;
     }
     fn gather_adds(&self, step : usize) -> usize {
+        //println!("  gather_adds");
         // read all the input threads while we are mutable
         let bd : &mut BlockData = &mut self.data.write().unwrap();
         let inputs = &bd.local.inputs;
@@ -207,18 +214,22 @@ impl Block {
                     n.y += h;
                     out = outs[0];
                     expand.push(byx.add(*s));
+                    //println!("  expand y-1")
                 } else if n.y >= h {
                     n.y -= h;
                     out = outs[1];
                     expand.push(byx.add(*s));
+                    //println!("  expand y+1")
                 } else if n.x < 0 {
                     n.x += w;
                     out = outs[2];
                     expand.push(byx.add(*s));
+                    //println!("  expand x-1")
                 } else if n.x >= w {
                     n.x -= w;
                     out = outs[3];
                     expand.push(byx.add(*s));
+                    //println!("  expand x+1")
                 } else {
                     out = outs[4];
                 }
@@ -288,23 +299,25 @@ fn main() {
             match blocks.get(byx) {
                 Some(block) => {
                     let block_expand : Updates = block.explore_neighbors(step, *byx, h32, w32, &map);
+                    //println!("  {}=block_expand", block_expand.yxs);
                     for e in block_expand.slice() {
                         expand.push(*e);
-                    }
+                    };
+                    true
                 },
                 None => panic!()
             };
         }
 
         for byx in expand.slice() {
-            println!("  {},{}=expand", byx.y, byx.x);
+            //println!("  {},{}=expand", byx.y, byx.x);
             match blocks.get(byx) {
                 Some(_) => {
-                    println!("    already present");
+                    //println!("    already present");
                     true
                 },
                 None => {
-                    println!("    creating");
+                    //println!("    creating");
                     let nb = Block::new();
                     {
                         let nbd : &mut BlockData = &mut nb.data.write().unwrap();
@@ -410,4 +423,3 @@ fn main() {
         println!("  {}=filled", filled);
     }
 }
-
